@@ -33,6 +33,26 @@ module Readwise
       results.sort_by(&:highlighted_at_time)
     end
 
+    def save(params)
+      uri = URI("https://readwise.io/api/v3/save")
+      headers = {
+        "Authorization": "Token #{@token}",
+        "Content-Type": "application/json"
+      }
+      http = Net::HTTP.new(uri.host, uri.port)
+      http.use_ssl = true
+      response = http.post(uri.path, params.to_json, headers)
+      response_code = Integer(response.code)
+      if response_code == 429
+        retry_after = Integer(response.fetch("Retry-After"))
+        raise Error, "Rate limited exceeded, retry after #{retry_after} seconds"
+      elsif response_code >= 400
+        raise Error, "Save request failed"
+      else
+        response.body
+      end
+    end
+
     private
 
     def export_page(page_cursor: nil, updated_after: nil, book_ids: [])
